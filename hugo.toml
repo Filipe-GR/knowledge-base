@@ -3,7 +3,7 @@ title = 'Filipe Codex'
 theme = 'hugo-book'
 languageCode = 'en-us'
 
-copyright = '© Filipe-GR'
+copyright = '© 2026 Filipe-GR. Content under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Code under [MIT](https://github.com/Filipe-GR/knowledge-base/blob/main/LICENSE).'
 
 # Configurações do Livro
 disablePathToLower = true
