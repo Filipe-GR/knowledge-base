@@ -1,0 +1,46 @@
+baseURL = 'https://Filipe-GR.github.io/knowledge-base/'
+title = 'Filipe Codex'
+theme = 'hugo-book'
+languageCode = 'en-us'
+
+copyright = '© Filipe-GR'
+
+# Configurações do Livro
+disablePathToLower = true
+enableGitInfo = true
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true # Necessário para Mermaid e HTML customizado
+  [markup.tableOfContents]
+    startLevel = 1
+  [markup.highlight]
+    style = 'dracula' # Mudei para Dracula (mais contraste/hacker que o base16)
+
+# Menu Lateral Extra
+[[menu.after]]
+  name = 'GitHub'
+  url = 'https://github.com/Filipe-GR/knowledge-base'
+  weight = 10
+
+[params]
+  # Aparência
+  BookTheme = 'auto' # Alterna Dark/Light com o sistema
+  BookSection = 'docs' # Pasta onde ficam os textos
+  BookRepo = 'https://github.com/Filipe-GR/knowledge-base'
+  BookEditLink = '{{ .Site.Params.BookRepo }}/edit/main/content/{{ .Path }}'
+  BookDateFormat = 'January 2, 2006'
+  
+  # Ferramentas de Busca
+  BookSearch = true
+
+  # --- O PULO DO GATO PARA CS ---
+  # Ativa suporte a fórmulas matemáticas (LaTeX)
+  # Exemplo no post: $$ f(x) = x^2 $$
+  BookPortableLinks = true
+  
+  # Se o tema pedir ativação explícita de Katex/Mermaid nos params (depende da versão),
+  # geralmente é automático se usar os shortcodes, mas deixe isso aqui por segurança:
+  [params.page]
+    # Nada específico necessário globalmente na versão nova, 
+    # mas você controla por página se precisar.
