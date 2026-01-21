@@ -1,0 +1,162 @@
+<div style="width:100%; height:65vh; overflow:hidden; border-radius: 8px; border: 1px solid #333; position: relative; margin-bottom: 2rem;">
+    <canvas id="glCanvas" style="width:100%; height:100%; display:block; background:#000; cursor: grab;"></canvas>
+</div>
+
+<script>
+(function() {
+    const canvas = document.getElementById("glCanvas");
+    const gl = canvas.getContext("webgl");
+
+    if (!gl) return;
+
+    let zoom = 2.8;
+    let targetZoom = 2.8;
+    
+    // Pan state
+    let offsetX = 0.0;
+    let offsetY = 0.0;
+    let targetOffsetX = 0.0;
+    let targetOffsetY = 0.0;
+    
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    canvas.addEventListener('mousedown', e => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        canvas.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+        canvas.style.cursor = 'grab';
+    });
+
+    canvas.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+
+        const minRes = Math.min(canvas.width, canvas.height);
+        targetOffsetX -= (dx / minRes) * targetZoom; 
+        targetOffsetY += (dy / minRes) * targetZoom; 
+    });
+
+    canvas.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        const zoomFactor = 1 + e.deltaY * 0.001;
+        targetZoom *= zoomFactor;
+        targetZoom = Math.max(0.001, Math.min(targetZoom, 15.0));
+    }, { passive: false });
+
+    function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const displayWidth  = canvas.clientWidth * dpr;
+        const displayHeight = canvas.clientHeight * dpr;
+        if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+            canvas.width  = displayWidth;
+            canvas.height = displayHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    const vsSource = `
+        attribute vec4 aVertexPosition;
+        void main() { gl_Position = aVertexPosition; }
+    `;
+
+    const fsSource = `
+        precision highp float;
+        uniform vec2 uResolution;
+        uniform float uTime;
+        uniform float uZoom;
+        uniform vec2 uOffset;
+
+        void main() {
+            vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution.xy) / min(uResolution.y, uResolution.x);
+            
+            uv *= uZoom;
+            uv += uOffset;
+
+            float anim = sin(uTime * 0.4) * 0.06; 
+            vec2 c = vec2(-0.78 + anim, 0.156 + anim*0.5); 
+
+            vec2 z = uv;
+            float iter = 0.0;
+            const float maxIter = 120.0;
+
+            for (float i = 0.0; i < maxIter; i++) {
+                float x = (z.x * z.x - z.y * z.y) + c.x;
+                float y = (2.0 * z.x * z.y) + c.y;
+                z = vec2(x, y);
+                if (length(z) > 2.0) break;
+                iter++;
+            }
+
+            float sn = iter - log2(log2(dot(z,z))) + 4.0;
+            float t = sn / maxIter;
+            t = clamp(t, 0.0, 1.0);
+            
+            vec3 color = vec3(0.0);
+            if (iter < maxIter) {
+                vec3 targetCyan = vec3(0.0, 1.0, 0.8);
+                float intensity = pow(t, 0.6); 
+                color = targetCyan * intensity;
+                color += vec3(smoothstep(0.95, 1.0, t*t))*0.4;
+            }
+
+            gl_FragColor = vec4(color, 1.0);
+        }
+    `;
+
+    function createShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            gl.deleteShader(shader); return null;
+        }
+        return shader;
+    }
+
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, createShader(gl, gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(shaderProgram, createShader(gl, gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    
+    const vertexPosition = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+    gl.enableVertexAttribArray(vertexPosition);
+    gl.vertexAttribPointer(vertexPosition, 2, gl.FLOAT, false, 0, 0);
+
+    const uResolution = gl.getUniformLocation(shaderProgram, "uResolution");
+    const uTime = gl.getUniformLocation(shaderProgram, "uTime");
+    const uZoomLoc = gl.getUniformLocation(shaderProgram, "uZoom");
+    const uOffsetLoc = gl.getUniformLocation(shaderProgram, "uOffset");
+
+    function render(now) {
+        resize();
+        
+        zoom += (targetZoom - zoom) * 0.1;
+        offsetX += (targetOffsetX - offsetX) * 0.1;
+        offsetY += (targetOffsetY - offsetY) * 0.1;
+
+        gl.uniform2f(uResolution, canvas.width, canvas.height);
+        gl.uniform1f(uTime, now * 0.001);
+        gl.uniform1f(uZoomLoc, zoom);
+        gl.uniform2f(uOffsetLoc, offsetX, offsetY);
+        
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+})();
+</script>

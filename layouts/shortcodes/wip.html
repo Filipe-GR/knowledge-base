@@ -1,0 +1,166 @@
+<style>
+    .wip-container {
+        display: flex;
+        align-items: center;
+        background: transparent;
+        border: 1px solid #ff3e3e;
+        border-left: 4px solid #ff3e3e;
+        border-radius: 4px;
+        padding: 10px;
+        margin: 2rem 0;
+        font-family: 'Courier New', Courier, monospace;
+        color: #ff3e3e;
+        box-shadow: 0 0 10px rgba(255, 62, 62, 0.2);
+    }
+
+    .wip-canvas-wrapper {
+        width: 120px;
+        height: 40px;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+
+    canvas.wip-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        image-rendering: pixelated;
+    }
+
+    .wip-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .wip-title {
+        font-weight: bold;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+    }
+
+    .wip-subtitle {
+        font-size: 0.8rem;
+        opacity: 0.8;
+    }
+
+    .blink-cursor::after {
+        content: '_';
+        animation: blink 1s step-start infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+</style>
+
+<div class="wip-container">
+    <div class="wip-canvas-wrapper">
+        <canvas id="wipCanvas-{{ .Ordinal }}" class="wip-canvas"></canvas>
+    </div>
+    <div class="wip-text">
+        <span class="wip-title">WORK IN PROGRESS<span class="blink-cursor"></span></span>
+        <span class="wip-subtitle">{{ if .Inner }}{{ .Inner }}{{ else }}Generating content pattern...{{ end }}</span>
+    </div>
+</div>
+
+<script>
+(function() {
+    const canvas = document.getElementById("wipCanvas-{{ .Ordinal }}");
+    const ctx = canvas.getContext('2d', { alpha: true });
+
+    const cols = 60;
+    const rows = 20;
+    const cellSize = 2;
+    
+    canvas.width = cols * cellSize;
+    canvas.height = rows * cellSize;
+
+    const liveColor = '#ff3e3e';
+
+    let grid = Array(cols * rows).fill(0);
+    let targetGrid = Array(cols * rows).fill(0);
+
+    const wipPattern = [
+        "                                                            ",
+        "                                                            ",
+        "                                                            ",
+        "                                                            ",
+        "      #       #    ###    ####                              ",
+        "      #       #     #     #   #                             ",
+        "      #   #   #     #     ####                              ",
+        "       # # # #      #     #                                 ",
+        "        #   #      ###    #                                 ",
+        "                                                            ",
+        "                                                            ",
+        "                                                            ",
+        "                                                            ",
+        "                                                            ",
+        "    ####################################################    ",
+        "    #                                                  #    ",
+        "    #    AUTOMATA // PROCESS // INITIALIZING...        #    ",
+        "    #                                                  #    ",
+        "    ####################################################    ",
+        "                                                            "
+    ];
+
+    function initTarget() {
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                const index = y * cols + x;
+                if (wipPattern[y] && wipPattern[y][x] === '#') {
+                    targetGrid[index] = 1;
+                } else {
+                    targetGrid[index] = 0;
+                }
+                grid[index] = Math.random() > 0.5 ? 1 : 0;
+            }
+        }
+    }
+
+    function update() {
+        const newGrid = [...grid];
+        for (let i = 0; i < grid.length; i++) {
+            const currentState = grid[i];
+            const desiredState = targetGrid[i];
+
+            if (currentState !== desiredState) {
+                if (Math.random() < 0.2) {
+                    newGrid[i] = desiredState;
+                }
+            } else {
+                if (Math.random() < 0.01) {
+                   newGrid[i] = 1 - desiredState;
+                }
+            }
+        }
+        grid = newGrid;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = liveColor;
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                const index = y * cols + x;
+                if (grid[index] === 1) {
+                    ctx.fillRect(x * cellSize, y * cellSize, cellSize - 0.2, cellSize - 0.2);
+                }
+            }
+        }
+    }
+
+    let animationFrameId;
+    let frameCount = 0;
+    const speedDivider = 2;
+
+    function loop() {
+        frameCount++;
+        if (frameCount % speedDivider === 0) {
+            update();
+            draw();
+        }
+        animationFrameId = requestAnimationFrame(loop);
+    }
+
+    initTarget();
+    loop();
+})();
+</script>
